@@ -1,0 +1,2 @@
+Datenbank Aufbau:
+table mit gilde und bild ID als primary key. Rest
