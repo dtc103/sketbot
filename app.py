@@ -12,9 +12,9 @@ USERNAME = os.getenv("DB_USER")
 PW = os.getenv("DB_PW")
 
 # later add these
-db_cursor = database_ops.open_database("localhost", USERNAME, PW, "pictures")
+db = database_ops.open_database("localhost", USERNAME, PW, "pictures")
 
 bot = commands.Bot(command_prefix="!")
-bot.add_cog(sketbot.IconRandomizerCog(bot, db_cursor))
+bot.add_cog(sketbot.IconRandomizerCog(bot, db))
 
 bot.run(TOKEN)

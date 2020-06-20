@@ -9,15 +9,22 @@ import requests
 from io import BytesIO
 
 import hashlib
+import os
+
+from datetime import datetime
+
+import database_ops
 
 
 class IconRandomizerCog(commands.Cog):
     # bot hat schon ne list, in der alle gilden drin stehen
-    #tmp_pictures = []
+    # tmp_pictures = []
+    accepted_roles = {}
+    accepted_channels = {}
 
-    def __init__(self, bot: commands.Bot, db_cursor=None):
+    def __init__(self, bot: commands.Bot, db=None):
         self.bot = bot
-        self.database_cursor = db_cursor
+        self.database = db
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -35,17 +42,17 @@ class IconRandomizerCog(commands.Cog):
 
         if len(message.attachments) > 0:
             for item in message.attachments:
-                save_picture(item.url, self.database_cursor, message.guild)
+                self.save_picture(item.url, self.database, message.guild)
 
         if len(message.embeds) > 0:
             for embed in message.embeds:
-                save_picture(embed.url)
+                self.save_picture(embed.url, self.database, message.guild)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         if len(before.embeds) < len(after.embeds):
             for embed in after.embeds:
-                save_picture(embed.url)
+                self.save_picture(embed.url, self.database, after.guild)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -55,18 +62,23 @@ class IconRandomizerCog(commands.Cog):
         if guild in tmp_guilds:
             return
 
+        add_guild(self.database, guild)
+
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         '''
             remove table to database, if bot got remove from server
         '''
+        remove_guild(self.database, guild)
         pass
 
     @commands.Cog.listener()
-    async def on_guild_change(self, before, after):
+    async def on_guild_change(self, before: discord.Guild, after: discord.Guild):
         '''
             change entry in database, if guild changed something
         '''
+        if before.name != after.name:
+            database_ops.update_guild(self.database, before, after)
         pass
 
     @commands.Cog.listener()
@@ -114,43 +126,52 @@ class IconRandomizerCog(commands.Cog):
         '''
             If the list for the specific guild is empty, ever channel will be accepted.
 
-            Adds the channelname to the restrictions            
+            Adds the channelname to the restrictions
         '''
         pass
 
+    def save_picture(self, url: str, database, guild: discord.Guild):
+        '''
+            saves picture to harddrive and database
+        '''
+        url_response = requests.get(url)
+        bytesio = BytesIO(url_response.content)
+        img: Image.Image = Image.open(bytesio)
 
-def save_picture(url: str, database_cursor, guild: discord.Guild):
-    '''
-        saves picture to harddrive and database
-    '''
-    url_response = requests.get(url)
-    bytesio = BytesIO(url_response.content)
-    img: Image.Image = Image.open(bytesio)
+        mdfive = hashlib.md5()
+        mdfive.update(bytesio.getvalue())
+        hash = mdfive.hexdigest()
 
-    mdfive = hashlib.md5()
-    mdfive.update(bytesio.getvalue())
-    hash = mdfive.hexdigest()
+        img = self.scale_to_discord_icon(img)
 
-    img = scale_to_discord_icon(img)
+        imagepath = f"C:/Users/Jan-K/programming/python/discord_bot/sketbot/pictures/{os.path.basename(url)}.png"
 
-    # noch geeigneten Namen für die bilder finden
-    img.save(f"pictures/test.png", 'png')
+        # TODO noch geeigneten Namen für die bilder finden
+        img.save(imagepath, 'png')
 
+        if(database.is_connected()):
+            database_cursor = database.cursor()
 
-def scale_to_discord_icon(img: Image.Image):
-    maxpix = 512
+            insert_statement = (
+                'insert into pictable (pichash, guildname, guildid, date, width, height, picpath) VALUES (%s, %s, %s, %s, %s, %s, %s);')
 
-    rawheight = img.height
-    rawwidth = img.width
+            params = (str(hash), str(guild.name), str(guild.id), str(datetime.today(
+            ).strftime('%Y-%m-%d')), int(img.width), int(img.height), imagepath)
 
-    if rawheight > rawwidth:
-        ratio = float(maxpix) / float(rawheight)
-        pass
-    else:
-        ratio = float(maxpix) / float(rawwidth)
-        pass
+    def scale_to_discord_icon(self, img: Image.Image):
+        maxpix = 512
 
-    newheight = int(rawheight * ratio)
-    newwidth = int(rawwidth * ratio)
+        rawheight = img.height
+        rawwidth = img.width
 
-    return img.resize((newwidth, newheight), Image.ANTIALIAS)
+        if rawheight > rawwidth:
+            ratio = float(maxpix) / float(rawheight)
+            pass
+        else:
+            ratio = float(maxpix) / float(rawwidth)
+            pass
+
+        newheight = int(rawheight * ratio)
+        newwidth = int(rawwidth * ratio)
+
+        return img.resize((newwidth, newheight), Image.ANTIALIAS)

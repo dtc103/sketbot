@@ -9,20 +9,36 @@ def open_database(host: str, user: str, password: str, database: str):
         password=password,
         database=database
     )
-    return mydb.cursor()
+    return mydb
 
 
-def add_guild(db_cursor, guild: discord.Guild):
+def add_guild(databse, guild: discord.Guild):
     pass
 
 
-def remove_guild(db_cursor, guild: discord.Guild):
+def remove_guild(databse, guild: discord.Guild):
     pass
 
 
-def update_guild(db_cursor, guild: discord.Guild):
+def update_guild(databse, before: discord.Guild, after: discord.Guild):
     pass
 
 
-def get_all_guilds(db_cursor):
+def get_all_guilds(databse):
+    pass
+
+
+def get_roles(databse, guild: discord.Guild):
+    pass
+
+
+def add_role(databse, guild, role: discord.Role):
+    pass
+
+
+def get_channels(database, guild: discord.Guild):
+    pass
+
+
+def add_channel(databse, guild, channel: discord.TextChannel):
     pass
