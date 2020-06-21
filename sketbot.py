@@ -9,6 +9,8 @@ from picture_manipulation.picture_manipualtion import scale_to_discord_icon
 import requests
 from io import BytesIO
 
+import utilities
+
 import hashlib
 import os
 
@@ -18,9 +20,10 @@ from datetime import datetime
 class IconRandomizerCog(commands.Cog):
     # bot already has a list with all guilds he is on
     # tmp_pictures = []
-    accepted_roles = {}
-    accepted_channels = {}
-    guild_options = {}
+
+    accepted_roles = {} #saved as key value pairs of guild and [(rolename, roleid),..]
+    accepted_channels = {} #saved as key value pairs of guild and [(channelname, channelid),..]
+    guild_options = {} 
 
     def __init__(self, bot: commands.Bot, db=None, imagepath:str="C:/"):
         self.bot = bot
@@ -68,7 +71,7 @@ class IconRandomizerCog(commands.Cog):
             Add entry to database, if joined to new server
         '''
         if guild in self.bot.guilds:
-            pass
+            return
 
         database_ops.add_guild(self.database, guild.name, guild.id)
 
@@ -77,8 +80,9 @@ class IconRandomizerCog(commands.Cog):
         '''
             remove entry from database, if bot got remove from server
         '''
-        database_ops.remove_guild(self.database, guild.name, guild.id)
-        pass
+        if guild in self.bot.guilds:
+            database_ops.remove_guild(self.database, guild.name, guild.id)
+        
 
     @commands.Cog.listener()
     async def on_guild_change(self, before: discord.Guild, after: discord.Guild):
@@ -102,8 +106,19 @@ class IconRandomizerCog(commands.Cog):
         '''
             Adds new role to the database(if not already in the database)
         '''
-        # check if rolename is valid on the server
-        pass
+        role: discord.Role = None
+        if utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            role = utilities.choose_role(self.bot, ctx, "Type in the index of the role that should be allowed to use this bot")
+        else:
+            await ctx.send("You dont have the permissions to run this command")
+            return
+
+        if (role.name, role.id) in self.accepted_roles[ctx.guild]:
+
+            return
+
+        database_ops.add_role(self.database, ctx.guild.name, ctx.guild.id, role.name, role.id)
+        self.accepted_roles[ctx.guild].append((role.name, role.id))
 
     @commands.command(name="listenOnChannel")
     async def add_listen_channel(self, ctx: commands.Context):
@@ -112,7 +127,25 @@ class IconRandomizerCog(commands.Cog):
 
             Lists all channels and let the user choose from them
         '''
+        channelctx:discord.TextChannel = None
+        if utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            channelctx = utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures")
+        else:
+            await ctx.send("You dont have the permissions to run this command")
+            return
 
+        if (channelctx.name, channelctx.id) in self.accepted_roles[ctx.guild]:
+            return
+        
+        database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
+        self.accepted_channels[ctx.guild].append((channelctx.name, channelctx.id))
+        
+
+    @commands.command(name="guildoptions")
+    async def change_guild_options(self, ctx:commands.Context):
+        """
+        changes options like
+        """
         pass
 
     def save_picture(self, url: str, database, guild: discord.Guild, author:discord.User, messageid: int):
