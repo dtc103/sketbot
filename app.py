@@ -1,7 +1,7 @@
 from discord.ext import commands
 
-import sketbot
-from db import database_ops
+import sketbot.sketbot as sb
+from sketbot.db import database_ops
 
 from dotenv import load_dotenv
 import os
@@ -27,6 +27,6 @@ PICTURE_FOLDER = os.getenv("PICTURE_FOLDER_PATH")
 daba = database_ops.open_database("localhost", USERNAME, PW, "pictures")
 
 bot = commands.Bot(command_prefix="!")
-bot.add_cog(sketbot.IconRandomizerCog(bot, daba, PICTURE_FOLDER))
+bot.add_cog(sb.IconRandomizerCog(bot, daba))
 
 bot.run(TOKEN)

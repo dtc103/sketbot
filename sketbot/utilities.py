@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands, tasks
 
-from discordPoll import DiscordPoll
-
 
 async def wait_for_message(bot, ctx, message=None, delete_after=None):
     if message is None:

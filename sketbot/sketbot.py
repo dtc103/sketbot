@@ -2,17 +2,18 @@ import discord
 from discord.ext import commands, tasks
 
 import mysql.connector
-from db import database_ops
+from sketbot.db import database_ops
 
 from PIL import Image
-from picture_manipulation.picture_manipualtion import scale_to_discord_icon
+from sketbot.picture_manipulation.picture_manipualtion import scale_to_discord_icon
 import requests
 from io import BytesIO
 
-import utilities
+import sketbot.utilities as utilities
 
 import hashlib
 import os
+import shutil #remove folder even if is empty
 
 from datetime import datetime
 
@@ -25,13 +26,15 @@ class IconRandomizerCog(commands.Cog):
     accepted_channels = {} #saved as key value pairs of guild and [(channelname, channelid),..]
     guild_options = {} 
 
-    def __init__(self, bot: commands.Bot, db=None, imagepath:str="C:/"):
+    def __init__(self, bot: commands.Bot, db=None, image_folderpath:str="../pictures"):
         self.bot = bot
         self.database = db
-        self.imagepath = imagepath
+        self.image_folderpath = image_folderpath
 
     @commands.Cog.listener()
     async def on_connect(self):
+        for guild in self.bot.guilds:
+            self.create_guild_folder(guild)
         pass
 
     @commands.Cog.listener()
@@ -74,6 +77,7 @@ class IconRandomizerCog(commands.Cog):
             return
 
         database_ops.add_guild(self.database, guild.name, guild.id)
+        self.create_guild_folder(guild)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
@@ -82,6 +86,7 @@ class IconRandomizerCog(commands.Cog):
         '''
         if guild in self.bot.guilds:
             database_ops.remove_guild(self.database, guild.name, guild.id)
+            self.delete_guild_folder(guild)
         
 
     @commands.Cog.listener()
@@ -91,6 +96,7 @@ class IconRandomizerCog(commands.Cog):
         '''
         if before.name != after.name or before.id != after.id:
             database_ops.update_guild(self.database, before.name, before.id, after.name, after.id)
+            self.rename_guild_folder(before, after)
         pass
 
     @commands.Cog.listener()
@@ -141,11 +147,15 @@ class IconRandomizerCog(commands.Cog):
         self.accepted_channels[ctx.guild].append((channelctx.name, channelctx.id))
         
 
-    @commands.command(name="guildoptions")
+    @commands.group(name="options", pass_context=True)
     async def change_guild_options(self, ctx:commands.Context):
         """
         changes options like
         """
+        pass
+    
+    @change_guild_options.command(name="roles")
+    async def change_guild_roles(self, ctx: commands.Context):
         pass
 
     def save_picture(self, url: str, database, guild: discord.Guild, author:discord.User, messageid: int):
@@ -167,16 +177,28 @@ class IconRandomizerCog(commands.Cog):
         # discord recommends 512x512 pixel pictures for server icons
         img = scale_to_discord_icon(img)
 
-        imagepath = f"{self.imagepath}/{messageid}.png"
+        imagepath = f"{self.image_folderpath}/{guild.id}/{messageid}.png"
 
-        #TODO: create a new folder for every new guild on harddisk
         if(database.is_connected()):
-            is_not_duplicate = database_ops.add_picture(self.database, hash, guild.name, guild.id, author.name, author.id, img.width, img.height, imagepath)
-            
-            if is_not_duplicate == False:
-                return
-
             try:
                 img.save(imagepath, 'png')
+                is_not_duplicate = database_ops.add_picture(self.database, hash, guild.name, guild.id, author.name, author.id, img.width, img.height, imagepath)
+            
+                if is_not_duplicate == False:
+                    return
             except FileNotFoundError:
-                print("Picture save folder not found")
+                print("Folder to safe the picture in not found")
+            
+
+    def create_guild_folder(self, guild:discord.Guild):
+        try:
+            #print(f'{self.image_folderpath}/{str(guild.id)}')
+            os.mkdir(f'{self.image_folderpath}/{str(guild.id)}')
+        except FileExistsError:
+            print(f"{guild.id}: Folder already exists")
+
+    def delete_guild_folder(self, guild:discord.Guild):
+        shutil.rmtree(f'{self.image_folderpath}/{str(guild.id)}', ignore_errors=True)
+
+    def rename_guild_folder(self, before: discord.Guild, after: discord.Guild):
+        os.rename(f'{self.image_folderpath}/{str(before.id)}', f'{self.image_folderpath}/{str(after.id)}')

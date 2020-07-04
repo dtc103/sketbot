@@ -18,9 +18,32 @@ def open_database(host: str, user: str, password: str, database: str):
 def add_guild(database, guildname: str, guildid: int):
     """
     Add guild to guild table with options
+
+    tablelayout is the following:
+    guildoptions(
+        guildid varchar(100) not null,
+        guildname varchar(100) not null,
+        crop_picture boolean,
+        safe_pictures boolean,
+        random_icon_change boolean,
+        primary key(guildid)
+    );
+
     """
+    database_cursor = database.cursor()
+
+    insert_stmt = ("""insert into guildoptions (guildid, guildname, crop_picture, safe_pictures, random_icon_change)
+    values (%s, %s, %d, %d, %d);""")
+    params = (guildid, guildname, False, False, False, False)
     
-    pass
+    try:
+        database_cursor.execute(insert_stmt, params)
+        database.commit()
+    except:
+        print("Couldnt add role to database")
+        return False
+    return True
+        
 
 
 def remove_guild(database, guildname: str, guildid: int):
@@ -57,7 +80,8 @@ def get_roles(database, guildname: str, guildid: int):
 def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int):
     """
     Adds a discord role to the database
-    create table roles(
+    tablelayout is the following:
+    roles(
         guildid,
         guildname,
         roleid,
@@ -73,7 +97,9 @@ def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int)
         database_cursor.execute(role_insert_stmt, params)
         database.commit()
     except:
-        print("couldnt add role")
+        print("couldnt add role to database.")
+        return False
+    return True
     
 
 
@@ -105,9 +131,9 @@ def add_channel(database, guildname: str, guildid: int, channelname: str, channe
         database_cursor.execute(channel_insert_stmt, params)
         database.commit()
     except:
-        print("couldnt add channel")
-
-    pass
+        print("couldnt add channel to database")
+        return False
+    return True
 
 def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:str, authorid:int, width:int, height:int, imagepath:str):
     """
