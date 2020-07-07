@@ -17,6 +17,8 @@ import shutil #remove folder even if is empty
 
 from datetime import datetime
 
+from sketbot.exception import InvalidRoleException
+
 
 class IconRandomizerCog(commands.Cog):
     # bot already has a list with all guilds he is on
@@ -35,10 +37,13 @@ class IconRandomizerCog(commands.Cog):
     async def on_connect(self):
         for guild in self.bot.guilds:
             self.create_guild_folder(guild)
-        pass
+            self.accepted_roles[guild] = []
+            self.accepted_channels[guild] = []
+            self.guild_options[guild] = []
 
     @commands.Cog.listener()
     async def on_resume(self):
+        database_ops.recover_database()
         pass
 
     @commands.Cog.listener()
@@ -101,26 +106,33 @@ class IconRandomizerCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_available(self, guild):
+        database_ops.recover_guild(guild)
         pass
 
     @commands.Cog.listener()
     async def on_guild_unavailable(self, guild):
         pass
 
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error):
+        await ctx.message.delete(delay=10)
+        if isinstance(error.original, InvalidRoleException):
+            await ctx.send("You dont have the permissions to run this command", delete_after=10)
+        #TODO test, if there will be an exception thrown, when you cannot delete a message, bc you are missing some permissions
+        pass
+
     @commands.command(name="addRolename")
-    async def add_role(self, ctx: commands.Context, rolename: str):
+    async def add_role(self, ctx: commands.Context):
         '''
             Adds new role to the database(if not already in the database)
         '''
         role: discord.Role = None
-        if utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            role = utilities.choose_role(self.bot, ctx, "Type in the index of the role that should be allowed to use this bot")
+        if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            role = await utilities.choose_role(self.bot, ctx, "Type in the index of the role that should be allowed to use this bot")
         else:
-            await ctx.send("You dont have the permissions to run this command")
-            return
+            raise InvalidRoleException()
 
-        if (role.name, role.id) in self.accepted_roles[ctx.guild]:
-
+        if (role.name, role.id) in self.accepted_roles.get(ctx.guild, None):
             return
 
         database_ops.add_role(self.database, ctx.guild.name, ctx.guild.id, role.name, role.id)
@@ -134,13 +146,13 @@ class IconRandomizerCog(commands.Cog):
             Lists all channels and let the user choose from them
         '''
         channelctx:discord.TextChannel = None
-        if utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+        if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
             channelctx = utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures")
         else:
-            await ctx.send("You dont have the permissions to run this command")
-            return
+            raise InvalidRoleException()
+            
 
-        if (channelctx.name, channelctx.id) in self.accepted_roles[ctx.guild]:
+        if (channelctx.name, channelctx.id) in self.accepted_channels[ctx.guild]:
             return
         
         database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
@@ -152,11 +164,30 @@ class IconRandomizerCog(commands.Cog):
         """
         changes options like
         """
-        pass
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
+        
     
     @change_guild_options.command(name="roles")
     async def change_guild_roles(self, ctx: commands.Context):
-        pass
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
+        
+
+    @change_guild_options.command(name="save_pictures")
+    async def change_save_pictures(self, ctx: commands.Context):
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
+
+    @change_guild_options.command(name="randomize_server_icon")
+    async def randomize_server_icon(self, ctx:commands.Context):
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
+
+    @change_guild_options.command(name="crop_picture")
+    async def crop_picture(self, ctx: commands.Context):
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
 
     def save_picture(self, url: str, database, guild: discord.Guild, author:discord.User, messageid: int):
         '''
@@ -191,8 +222,10 @@ class IconRandomizerCog(commands.Cog):
             
 
     def create_guild_folder(self, guild:discord.Guild):
+        if not os.path.exists(self.image_folderpath):
+            os.mkdir(self.image_folderpath)
+
         try:
-            #print(f'{self.image_folderpath}/{str(guild.id)}')
             os.mkdir(f'{self.image_folderpath}/{str(guild.id)}')
         except FileExistsError:
             print(f"{guild.id}: Folder already exists")

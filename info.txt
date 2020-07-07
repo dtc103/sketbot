@@ -3,3 +3,5 @@ table mit gilde und bild ID als primary key. Rest
 
 Datenbank nach benutzung disconnecten und einfach danach neu verbinden. Das sorgt dafür, dass man z.b. mit sql
 workbench auf datenbank zugreifen kann
+
+exception werfen, falls kommando nicht ausgeführt werden darf

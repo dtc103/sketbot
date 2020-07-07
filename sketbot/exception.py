@@ -1,0 +1,2 @@
+class InvalidRoleException(Exception):
+    pass

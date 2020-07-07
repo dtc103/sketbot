@@ -72,6 +72,15 @@ def get_roles(database, guildname: str, guildid: int):
     Returns all discord roles for a specific guild
     """
     database_cursor = database.cursor()
+    role_get_stmt = ("select guildname, guildid from pictable where (guildname, guildid) = (%s, %s)")
+    params = (guildname, guildid)
+
+    database_cursor.execute(role_get_stmt, params)
+
+    roles = database_cursor.fetchall()
+
+    for role in roles:
+        print(role)
 
 
     pass
@@ -168,3 +177,9 @@ def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:st
         return False
 
     return True
+
+def recover_database():
+    pass
+
+def recover_guild():
+    pass
