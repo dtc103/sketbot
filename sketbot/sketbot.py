@@ -26,7 +26,7 @@ class IconRandomizerCog(commands.Cog):
 
     accepted_roles = {} #saved as key value pairs of guild and [(rolename, roleid),..]
     accepted_channels = {} #saved as key value pairs of guild and [(channelname, channelid),..]
-    guild_options = {} 
+    guild_options = {} #dictionary of dictionaries with its option values
 
     def __init__(self, bot: commands.Bot, db=None, image_folderpath:str="../pictures"):
         self.bot = bot
@@ -35,6 +35,7 @@ class IconRandomizerCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_connect(self):
+        print("CONNECTED")
         for guild in self.bot.guilds:
             self.create_guild_folder(guild)
             self.accepted_roles[guild] = []
@@ -43,7 +44,8 @@ class IconRandomizerCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_resume(self):
-        database_ops.recover_database()
+        print("RESUMED")
+        #database_ops.recover_database()
         pass
 
     @commands.Cog.listener()
@@ -84,15 +86,19 @@ class IconRandomizerCog(commands.Cog):
         database_ops.add_guild(self.database, guild.name, guild.id)
         self.create_guild_folder(guild)
 
+        self.guild_options[guild] = {"crop_picture": True, "safe_picture": False, "random_icon_change": False}
+
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
         '''
-            remove entry from database, if bot got remove from server
+            remove entry from database, if bot got removed from server
         '''
         if guild in self.bot.guilds:
             database_ops.remove_guild(self.database, guild.name, guild.id)
             self.delete_guild_folder(guild)
-        
+            del self.accepted_channels[guild]
+            del self.accepted_roles[guild]
+            del self.guild_options[guild]
 
     @commands.Cog.listener()
     async def on_guild_change(self, before: discord.Guild, after: discord.Guild):
@@ -106,21 +112,38 @@ class IconRandomizerCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_available(self, guild):
-        database_ops.recover_guild(guild)
+        print(f"{guild.name} is available")
+        #database_ops.recover_guild(guild)
         pass
 
     @commands.Cog.listener()
     async def on_guild_unavailable(self, guild):
-        pass
+        '''
+        If the guild gets unavailable, just delete it from the cache.
+        It will be recovered afterwards in the on_guild_available method
+        and the last valid state will be loaded in the cache
+        '''
+        del self.accepted_channels[guild]
+        del self.accepted_roles[guild]
+        del self.guild_options[guild]
+        
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
+        
+
         await ctx.message.delete(delay=10)
+        if isinstance(error, commands.CheckFailure):
+            print(error.args)
+            print(str(error))
+            return
         if isinstance(error.original, InvalidRoleException):
-            await ctx.send("You dont have the permissions to run this command", delete_after=10)
-        #TODO test, if there will be an exception thrown, when you cannot delete a message, bc you are missing some permissions
+            await ctx.send(f"{ctx.message.author.mention}, you dont have the permissions to run this command", delete_after=10)
+            return 
+        #TODO test, if there will be an exception thrown, when the bot cannot delete a message or a command, bc you are missing some permissions
         pass
 
+    
     @commands.command(name="addRolename")
     async def add_role(self, ctx: commands.Context):
         '''
@@ -132,13 +155,14 @@ class IconRandomizerCog(commands.Cog):
         else:
             raise InvalidRoleException()
 
-        if (role.name, role.id) in self.accepted_roles.get(ctx.guild, None):
+        if (role.name, role.id) in self.accepted_roles[ctx.guild]:
             return
 
         database_ops.add_role(self.database, ctx.guild.name, ctx.guild.id, role.name, role.id)
         self.accepted_roles[ctx.guild].append((role.name, role.id))
 
     @commands.command(name="listenOnChannel")
+    @utilities.has_accepted_role(accepted_roles)
     async def add_listen_channel(self, ctx: commands.Context):
         '''
             if the list for the specific guild is empty, every channel will be accepted.
@@ -146,17 +170,21 @@ class IconRandomizerCog(commands.Cog):
             Lists all channels and let the user choose from them
         '''
         channelctx:discord.TextChannel = None
-        if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            channelctx = utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures")
-        else:
-            raise InvalidRoleException()
-            
 
-        if (channelctx.name, channelctx.id) in self.accepted_channels[ctx.guild]:
-            return
+        print("OK")
+
+        # if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+        #     channelctx = await utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures in")
+        # else:
+        #     raise InvalidRoleException()
+            
+        # if (channelctx.name, channelctx.id) in self.accepted_channels[ctx.guild]:
+        #     return
         
-        database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
-        self.accepted_channels[ctx.guild].append((channelctx.name, channelctx.id))
+        # database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
+        # self.accepted_channels[ctx.guild].append((channelctx.name, channelctx.id))
+
+        print("ADDED CHANNEL")
         
 
     @commands.group(name="options", pass_context=True)
@@ -167,13 +195,6 @@ class IconRandomizerCog(commands.Cog):
         if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
             raise InvalidRoleException()
         
-    
-    @change_guild_options.command(name="roles")
-    async def change_guild_roles(self, ctx: commands.Context):
-        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            raise InvalidRoleException()
-        
-
     @change_guild_options.command(name="save_pictures")
     async def change_save_pictures(self, ctx: commands.Context):
         if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
@@ -186,6 +207,11 @@ class IconRandomizerCog(commands.Cog):
 
     @change_guild_options.command(name="crop_picture")
     async def crop_picture(self, ctx: commands.Context):
+        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            raise InvalidRoleException()
+
+    @change_guild_options.command(name="roles")
+    async def change_guild_roles(self, ctx: commands.Context):
         if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
             raise InvalidRoleException()
 
@@ -206,7 +232,8 @@ class IconRandomizerCog(commands.Cog):
         #TODO: in the future: decide on database option if this should be compressed or not
         #if self.compress_pictures:
         # discord recommends 512x512 pixel pictures for server icons
-        img = scale_to_discord_icon(img)
+        if self.guild_options[guild]["crop_picture"]:
+            img = scale_to_discord_icon(img)
 
         imagepath = f"{self.image_folderpath}/{guild.id}/{messageid}.png"
 
@@ -235,3 +262,6 @@ class IconRandomizerCog(commands.Cog):
 
     def rename_guild_folder(self, before: discord.Guild, after: discord.Guild):
         os.rename(f'{self.image_folderpath}/{str(before.id)}', f'{self.image_folderpath}/{str(after.id)}')
+
+
+    

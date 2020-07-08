@@ -1,6 +1,8 @@
 import mysql.connector
 from datetime import datetime
 
+from sketbot.exception import DatabaseException
+
 
 def open_database(host: str, user: str, password: str, database: str):
     """
@@ -40,8 +42,7 @@ def add_guild(database, guildname: str, guildid: int):
         database_cursor.execute(insert_stmt, params)
         database.commit()
     except:
-        print("Couldnt add role to database")
-        return False
+        raise DatabaseException()
     return True
         
 
@@ -106,8 +107,7 @@ def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int)
         database_cursor.execute(role_insert_stmt, params)
         database.commit()
     except:
-        print("couldnt add role to database.")
-        return False
+        raise DatabaseException()
     return True
     
 
@@ -133,15 +133,15 @@ def add_channel(database, guildname: str, guildid: int, channelname: str, channe
     """
     database_cursor = database.cursor()
 
-    channel_insert_stmt = ("insert into channel (guildid, guildname, channelid, channelname) values (%s, %s, %s, %s);")
-    params = (guildname, str(guildid), str(channelid), str(channelname))
+    channel_insert_stmt = ("insert into channels (guildid, guildname, channelid, channelname) values (%s, %s, %s, %s);")
+    params = (str(guildid), guildname,  str(channelid), channelname)
 
     try:
         database_cursor.execute(channel_insert_stmt, params)
         database.commit()
     except:
-        print("couldnt add channel to database")
-        return False
+        raise DatabaseException()
+        
     return True
 
 def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:str, authorid:int, width:int, height:int, imagepath:str):
@@ -173,8 +173,7 @@ def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:st
         database.commit()
         print("SAVED")
     except:
-        print("Picture already exists")
-        return False
+        DatabaseException()
 
     return True
 

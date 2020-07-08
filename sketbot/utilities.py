@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 
+from sketbot.exception import InvalidRoleException
+
 
 async def wait_for_message(bot, ctx, message=None, delete_after=None, timeout=None):
     if message is None:
@@ -62,12 +64,25 @@ async def choose_role(bot, ctx, msg="Choose role index"):
 
     return ctx.guild.roles[index - 1]
 
-async def has_role(member:discord.Member, roles):
+async def has_role(member:discord.Member, accepted_roles):
     if member.guild_permissions.administrator:
         return True
 
     for role in member.roles:
-        if (role.name, role.id) in roles:
+        if (role.name, role.id) in accepted_roles:
             return True
 
     return False
+
+def has_accepted_role(accepted_roles):
+    async def has_role(ctx, *args):
+        #if ctx.message.author.guild_permissions.administrator:
+        #    return True
+
+        for role in ctx.message.author.roles:
+            if (role.name, role.id) in accepted_roles:
+                return True
+
+        return False
+
+    return commands.check(has_role)
