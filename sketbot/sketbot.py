@@ -35,12 +35,23 @@ class IconRandomizerCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_connect(self):
-        print("CONNECTED")
+        pass
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
         for guild in self.bot.guilds:
             self.create_guild_folder(guild)
             self.accepted_roles[guild] = []
             self.listen_channels[guild] = []
             self.guild_options[guild] = []
+        #database_ops.recover_from_database()
+
+    @commands.Cog.listener()
+    async def on_disconnect(self):
+        for guild in self.bot.guilds:
+            del self.accepted_roles[guild]
+            del self.listen_channels[guild]
+            del self.guild_options[guild]
 
     @commands.Cog.listener()
     async def on_resumed(self):

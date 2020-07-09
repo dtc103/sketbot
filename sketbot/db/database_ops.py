@@ -36,7 +36,7 @@ def add_guild(database, guildname: str, guildid: int):
 
     insert_stmt = ("""insert into guildoptions (guildid, guildname, crop_picture, safe_pictures, random_icon_change)
     values (%s, %s, %d, %d, %d);""")
-    params = (guildid, guildname, False, False, False, False)
+    params = (guildid, guildname, False, False, False)
     
     try:
         database_cursor.execute(insert_stmt, params)
@@ -180,5 +180,5 @@ def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:st
 def recover_from_database():
     pass
 
-def recover_guild():
+def recover_guild(guildname:str, guildid:int):
     pass
