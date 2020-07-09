@@ -66,7 +66,7 @@ async def choose_role(bot, ctx, msg="Choose role index", timeout=None):
 
 async def has_role(member:discord.Member, accepted_roles):
     #FIXME dont forget to deltet this
-    return True
+    #return True
     if member.guild_permissions.administrator:
         return True
 
