@@ -13,7 +13,7 @@ import sketbot.utilities as utilities
 
 import hashlib
 import os
-import shutil #remove folder even if is empty
+import shutil #remove folder even if its not empty
 
 from datetime import datetime
 
@@ -25,7 +25,7 @@ class IconRandomizerCog(commands.Cog):
     # tmp_pictures = []
 
     accepted_roles = {} #saved as key value pairs of guild and [(rolename, roleid),..]
-    accepted_channels = {} #saved as key value pairs of guild and [(channelname, channelid),..]
+    listen_channels = {} #saved as key value pairs of guild and [(channelname, channelid),..]
     guild_options = {} #dictionary of dictionaries with its option values
 
     def __init__(self, bot: commands.Bot, db=None, image_folderpath:str="../pictures"):
@@ -39,13 +39,13 @@ class IconRandomizerCog(commands.Cog):
         for guild in self.bot.guilds:
             self.create_guild_folder(guild)
             self.accepted_roles[guild] = []
-            self.accepted_channels[guild] = []
+            self.listen_channels[guild] = []
             self.guild_options[guild] = []
 
     @commands.Cog.listener()
-    async def on_resume(self):
+    async def on_resumed(self):
         print("RESUMED")
-        #database_ops.recover_database()
+        #database_ops.recover_from_database()
         pass
 
     @commands.Cog.listener()
@@ -96,7 +96,7 @@ class IconRandomizerCog(commands.Cog):
         if guild in self.bot.guilds:
             database_ops.remove_guild(self.database, guild.name, guild.id)
             self.delete_guild_folder(guild)
-            del self.accepted_channels[guild]
+            del self.listen_channels[guild]
             del self.accepted_roles[guild]
             del self.guild_options[guild]
 
@@ -123,20 +123,18 @@ class IconRandomizerCog(commands.Cog):
         It will be recovered afterwards in the on_guild_available method
         and the last valid state will be loaded in the cache
         '''
-        del self.accepted_channels[guild]
+        del self.listen_channels[guild]
         del self.accepted_roles[guild]
         del self.guild_options[guild]
         
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
-        
+        if isinstance(error, commands.CommandNotFound):
+            print("Error: CommandNotFound was called")
+            return
 
         await ctx.message.delete(delay=10)
-        if isinstance(error, commands.CheckFailure):
-            print(error.args)
-            print(str(error))
-            return
         if isinstance(error.original, InvalidRoleException):
             await ctx.send(f"{ctx.message.author.mention}, you dont have the permissions to run this command", delete_after=10)
             return 
@@ -151,7 +149,7 @@ class IconRandomizerCog(commands.Cog):
         '''
         role: discord.Role = None
         if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            role = await utilities.choose_role(self.bot, ctx, "Type in the index of the role that should be allowed to use this bot")
+            role = await utilities.choose_role(self.bot, ctx, "Type in the index of the role that should be allowed to use this bot", timeout=20)
         else:
             raise InvalidRoleException()
 
@@ -161,8 +159,8 @@ class IconRandomizerCog(commands.Cog):
         database_ops.add_role(self.database, ctx.guild.name, ctx.guild.id, role.name, role.id)
         self.accepted_roles[ctx.guild].append((role.name, role.id))
 
+
     @commands.command(name="listenOnChannel")
-    @utilities.has_accepted_role(accepted_roles)
     async def add_listen_channel(self, ctx: commands.Context):
         '''
             if the list for the specific guild is empty, every channel will be accepted.
@@ -171,20 +169,16 @@ class IconRandomizerCog(commands.Cog):
         '''
         channelctx:discord.TextChannel = None
 
-        print("OK")
-
-        # if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-        #     channelctx = await utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures in")
-        # else:
-        #     raise InvalidRoleException()
+        if await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
+            channelctx = await utilities.choose_channel(self.bot, ctx, "Type in the index of the channel, the bot should listen to pictures in", 20)
+        else:
+            raise InvalidRoleException()
             
-        # if (channelctx.name, channelctx.id) in self.accepted_channels[ctx.guild]:
-        #     return
+        if (channelctx.name, channelctx.id) in self.listen_channels[ctx.guild]:
+            return
         
-        # database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
-        # self.accepted_channels[ctx.guild].append((channelctx.name, channelctx.id))
-
-        print("ADDED CHANNEL")
+        database_ops.add_channel(self.database, ctx.guild.name, ctx.guild.id, channelctx.name, channelctx.id)
+        self.listen_channels[ctx.guild].append((channelctx.name, channelctx.id))
         
 
     @commands.group(name="options", pass_context=True)

@@ -36,7 +36,7 @@ async def wait_for_reaction(bot, ctx, message=None, delete_after=None, timeout=N
     reaction, _ = await bot.wait_for(event='reaction_add', check=lambda reaction, user: ctx.author == user and reaction.message.id == message.id, timeout=timeout)
     return reaction
 
-async def choose_channel(bot, ctx, msg="Choose channel index"):
+async def choose_channel(bot, ctx, msg="Choose channel index", timeout = None):
     await ctx.send(msg)
     response = "```"
     for index, channel in enumerate(ctx.guild.text_channels):
@@ -45,12 +45,12 @@ async def choose_channel(bot, ctx, msg="Choose channel index"):
 
     await ctx.send(response)
 
-    msg = await wait_for_message(bot, ctx, 20)
+    msg = await wait_for_message(bot, ctx, timeout=timeout)
     index = int(msg.content)
 
     return ctx.guild.text_channels[index - 1]
     
-async def choose_role(bot, ctx, msg="Choose role index"):
+async def choose_role(bot, ctx, msg="Choose role index", timeout=None):
     await ctx.send(msg)
     response = "```"
     for index, role in enumerate(ctx.guild.roles):
@@ -59,12 +59,14 @@ async def choose_role(bot, ctx, msg="Choose role index"):
 
     await ctx.send(response)
 
-    msg = await wait_for_message(bot, ctx, 20)
+    msg = await wait_for_message(bot, ctx, timeout=timeout)
     index = int(msg.content)
 
     return ctx.guild.roles[index - 1]
 
 async def has_role(member:discord.Member, accepted_roles):
+    #FIXME dont forget to deltet this
+    return True
     if member.guild_permissions.administrator:
         return True
 
@@ -74,15 +76,3 @@ async def has_role(member:discord.Member, accepted_roles):
 
     return False
 
-def has_accepted_role(accepted_roles):
-    async def has_role(ctx, *args):
-        #if ctx.message.author.guild_permissions.administrator:
-        #    return True
-
-        for role in ctx.message.author.roles:
-            if (role.name, role.id) in accepted_roles:
-                return True
-
-        return False
-
-    return commands.check(has_role)

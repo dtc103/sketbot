@@ -177,7 +177,7 @@ def add_picture(database, pichash:str, guildname:str, guildid:int, authorname:st
 
     return True
 
-def recover_database():
+def recover_from_database():
     pass
 
 def recover_guild():
