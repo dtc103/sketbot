@@ -35,7 +35,7 @@ def add_guild(database, guildname: str, guildid: int):
     database_cursor = database.cursor()
 
     insert_stmt = ("""insert into guildoptions (guildid, guildname, crop_picture, safe_pictures, random_icon_change)
-    values (%s, %s, %d, %d, %d);""")
+    values (%s, %s, %s, %s, %s);""")
     params = (guildid, guildname, False, False, False)
     
     try:
@@ -55,8 +55,8 @@ def remove_guild(database, guildname: str, guildid: int):
 
     database_cursor.execute("show tables;")
     for table in database_cursor.fetchall():
-        remove_guild_stmt = f"delete from {table[0]} where guildname=%s and guildid=%s"
-        params = ((guildname, str(guildid)))
+        remove_guild_stmt = f"delete from {table[0]} where guildname=%s and guildid=%s;"
+        params = (guildname, str(guildid))
 
         try:
             database_cursor.execute(remove_guild_stmt, params)
@@ -66,10 +66,6 @@ def remove_guild(database, guildname: str, guildid: int):
         database.commit()
     except:
         raise DatabaseException()
-
-        
-
-    pass
 
 
 def update_guild(database, guildname_before: str, guildid_before: int, guildname_after: str, guildid_after: int):
@@ -81,8 +77,8 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
     if guildname_after != guildid_before and guildid_before == guildid_after:
         database_cursor.execute("show tables;")
         for table in database_cursor.fetchall():
-            update_guild_stmt = f"update {table[0]} set guildname=%s where guildid=%s and guildname=%s"
-            params = ((guildname_after, str(guildid_before), guildname_before))
+            update_guild_stmt = f"update {table[0]} set guildname=%s where guildid=%s and guildname=%s;"
+            params = (guildname_after, str(guildid_before), guildname_before)
             try:
                 database_cursor.execute(update_guild_stmt, params)
             #Database wont throw an error, when no item was found
@@ -93,7 +89,17 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
         except:
             raise DatabaseException()
 
-    pass
+def update_guild_options(database, guildname: str, guildid: int, crop_picture: bool, safe_picture: bool, random_icon_change: bool):
+    database_cursor = database.cursor()
+
+    update_stmt = "update guildoptions set crop_picture=%s, safe_pictures=%s, random_icon_change=%s where guildid=%s and guildname=%s;"
+    params = (crop_picture, safe_picture, random_icon_change, str(guildid), guildname)
+
+    try:
+        database_cursor.execute(update_stmt, params)
+        database.commit()
+    except:
+        raise DatabaseException()
 
 
 def get_all_guilds(database):
@@ -109,18 +115,19 @@ def get_roles(database, guildname: str, guildid: int):
     Returns all discord roles for a specific guild
     """
     database_cursor = database.cursor()
-    role_get_stmt = "select guildname, guildid from pictable where (guildname, guildid) = (%s, %s)"
+    role_get_stmt = "select roleid, rolename from roles where guildname=%s and guildid=%s"
     params = (guildname, str(guildid))
 
-    database_cursor.execute(role_get_stmt, params)
+    try:
+        database_cursor.execute(role_get_stmt, params)
+    except:
+        raise DatabaseException()
 
-    roles = database_cursor.fetchall()
+    roles = []
+    for roleid, rolename in database_cursor.fetchall():
+        roles.append((roleid, rolename))
 
-    for role in roles:
-        print(role)
-
-
-    pass
+    return roles
 
 
 def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int):
@@ -152,7 +159,21 @@ def get_channels(database, guildname: str, guildid: int):
     """
     Returns all channels the bot should listening to for a specific guild.
     """
-    pass
+    database_cursor = database.cursor()
+    
+    get_channels_stmt = "select channelid, channelname from channels where guildname=%s and guildid=%s;"
+    params = (guildname, str(guildid))
+
+    try:
+        database_cursor.execute(get_channels_stmt, params)
+    except:
+        DatabaseException()
+
+    channels = []
+    for channelid, channelname in database_cursor.fetchall():
+        channels.append((channelid, channelname))
+
+    return channels
 
 
 def add_channel(database, guildname: str, guildid: int, channelname: str, channelid: int):
