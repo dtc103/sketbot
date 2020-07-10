@@ -16,7 +16,7 @@ async def wait_for_message(bot, ctx, message=None, delete_after=None, timeout=No
 
 
 async def wait_for_query(bot, ctx, message, delete_after=None, timeout=None):
-    accept_emoji = "✅"
+    accept_emoji = "✔️"
     decline_emoji = "❌"
 
     msg = await ctx.send(message, delete_after=delete_after)

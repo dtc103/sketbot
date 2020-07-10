@@ -200,25 +200,39 @@ class IconRandomizerCog(commands.Cog):
         if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
             raise InvalidRoleException()
         
-    @change_guild_options.command(name="save_pictures")
+    @change_guild_options.command(name="safe_pictures")
     async def change_save_pictures(self, ctx: commands.Context):
-        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            raise InvalidRoleException()
+        if utilities.wait_for_query(self.bot, ctx, "To enable/disable the saving of the pictures press ✔️ to enable or ❌ to disable it", None, 20):
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, safe_picture=True)
+            self.guild_options[ctx.guild]["safe_picture"] = True
+        else:
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, safe_picture=False)
+            self.guild_options[ctx.guild]["safe_picture"] = False
 
     @change_guild_options.command(name="randomize_server_icon")
     async def randomize_server_icon(self, ctx:commands.Context):
-        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            raise InvalidRoleException()
+        if utilities.wait_for_query(self.bot, ctx, "To enable/disable the randomization of the server icon press ✔️ to enable or ❌ to disable it", None, 20):
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, random_icon_change=True)
+            self.guild_options[ctx.guild]["random_icon_change"] = True
+        else:
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, random_icon_change=False)
+            self.guild_options[ctx.guild]["random_icon_change"] = False
+        pass
 
     @change_guild_options.command(name="crop_picture")
     async def crop_picture(self, ctx: commands.Context):
-        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            raise InvalidRoleException()
+        if utilities.wait_for_query(self.bot, ctx, "If you want that every picture will get compressed to the recommended size of a discord server icon press ✔️ to enable or ❌ to disable it", None, 20):
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, crop_picture=True)
+            self.guild_options[ctx.guild]["crop_picture"] = True
+        else:
+            database_ops.update_guild_options(self.database, ctx.guild.name, ctx.guild.id, crop_picture=False)
+            self.guild_options[ctx.guild]["crop_picture"] = False
+        pass
 
-    @change_guild_options.command(name="roles")
+    @change_guild_options.command(name="deleteRole")
     async def change_guild_roles(self, ctx: commands.Context):
-        if not await utilities.has_role(ctx.author, self.accepted_roles[ctx.guild]):
-            raise InvalidRoleException()
+        
+        pass
 
     def save_picture(self, url: str, database, guild: discord.Guild, author:discord.User, messageid: int):
         '''

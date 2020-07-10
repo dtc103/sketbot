@@ -89,14 +89,34 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
         except:
             raise DatabaseException()
 
-def update_guild_options(database, guildname: str, guildid: int, crop_picture: bool, safe_picture: bool, random_icon_change: bool):
+def update_guild_options(database, guildname: str, guildid: int,*, crop_picture: bool = None, safe_picture: bool = None, random_icon_change: bool = None):
     database_cursor = database.cursor()
 
-    update_stmt = "update guildoptions set crop_picture=%s, safe_pictures=%s, random_icon_change=%s where guildid=%s and guildname=%s;"
-    params = (crop_picture, safe_picture, random_icon_change, str(guildid), guildname)
+    if crop_picture is not None:
+        update_stmt = "update guildoptions set crop_picture=%s where guildid=%s and guildname=%s;"
+        params = (crop_picture, safe_picture, random_icon_change, str(guildid), guildname)
+        try:
+            database_cursor.execute(update_stmt, params)
+        except:
+            raise DatabaseException()
 
+    if safe_picture is not None:
+        update_stmt = "update guildoptions set safe_picture=%s where guildid=%s and guildname=%s;"
+        params = (crop_picture, safe_picture, random_icon_change, str(guildid), guildname)
+        try:
+            database_cursor.execute(update_stmt, params)
+        except:
+            raise DatabaseException()
+
+    if random_icon_change is not None:
+        update_stmt = "update guildoptions set random_icon_change=%s where guildid=%s and guildname=%s;"
+        params = (crop_picture, safe_picture, random_icon_change, str(guildid), guildname)
+        try:
+            database_cursor.execute(update_stmt, params)
+        except:
+            raise DatabaseException()
+    
     try:
-        database_cursor.execute(update_stmt, params)
         database.commit()
     except:
         raise DatabaseException()
