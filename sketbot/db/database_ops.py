@@ -49,8 +49,26 @@ def add_guild(database, guildname: str, guildid: int):
 
 def remove_guild(database, guildname: str, guildid: int):
     """
-    remove everything from that guild in every table and return every picturepath to delete on hardisk
+    remove everything from that guild in every table
     """
+    database_cursor = database.cursor()
+
+    database_cursor.execute("show tables;")
+    for table in database_cursor.fetchall():
+        remove_guild_stmt = f"delete from {table[0]} where guildname=%s and guildid=%s"
+        params = ((guildname, str(guildid)))
+
+        try:
+            database_cursor.execute(remove_guild_stmt, params)
+        except:
+            raise DatabaseException()
+    try:
+        database.commit()
+    except:
+        raise DatabaseException()
+
+        
+
     pass
 
 
@@ -58,6 +76,23 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
     """
     Updates a guild if there were some changes on the discord guild
     """
+    database_cursor = database.cursor()
+
+    if guildname_after != guildid_before and guildid_before == guildid_after:
+        database_cursor.execute("show tables;")
+        for table in database_cursor.fetchall():
+            update_guild_stmt = f"update {table[0]} set guildname=%s where guildid=%s and guildname=%s"
+            params = ((guildname_after, str(guildid_before), guildname_before))
+            try:
+                database_cursor.execute(update_guild_stmt, params)
+            #Database wont throw an error, when no item was found
+            except:
+                raise DatabaseException()
+        try:
+            database.commit()
+        except:
+            raise DatabaseException()
+
     pass
 
 
@@ -65,6 +100,7 @@ def get_all_guilds(database):
     """
     returns a list of guilds the bot is active on
     """
+    #This function isnt neccessary, because discord already provides this function
     pass
 
 
@@ -73,8 +109,8 @@ def get_roles(database, guildname: str, guildid: int):
     Returns all discord roles for a specific guild
     """
     database_cursor = database.cursor()
-    role_get_stmt = ("select guildname, guildid from pictable where (guildname, guildid) = (%s, %s)")
-    params = (guildname, guildid)
+    role_get_stmt = "select guildname, guildid from pictable where (guildname, guildid) = (%s, %s)"
+    params = (guildname, str(guildid))
 
     database_cursor.execute(role_get_stmt, params)
 
@@ -100,7 +136,7 @@ def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int)
     """
     database_cursor = database.cursor()
 
-    role_insert_stmt = ("insert into roles (guildid, guildname, roleid, rolename) values (%s, %s, %s, %s);")
+    role_insert_stmt = "insert into roles (guildid, guildname, roleid, rolename) values (%s, %s, %s, %s);"
     params = (guildname, str(guildid), rolename, str(roleid))
 
     try:
@@ -133,7 +169,7 @@ def add_channel(database, guildname: str, guildid: int, channelname: str, channe
     """
     database_cursor = database.cursor()
 
-    channel_insert_stmt = ("insert into channels (guildid, guildname, channelid, channelname) values (%s, %s, %s, %s);")
+    channel_insert_stmt = "insert into channels (guildid, guildname, channelid, channelname) values (%s, %s, %s, %s);"
     params = (str(guildid), guildname,  str(channelid), channelname)
 
     try:
