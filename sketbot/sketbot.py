@@ -66,6 +66,7 @@ class IconRandomizerCog(commands.Cog):
             del self.guild_options[guild]
 
         # TODO maybe disconnect from database here?
+        self.database.close()
 
     @commands.Cog.listener()
     async def on_resumed(self):
@@ -303,6 +304,10 @@ class IconRandomizerCog(commands.Cog):
 
                 except FileNotFoundError:
                     print("Folder to safe the picture in not found")
+
+    def check_nsfw():
+        #TODO check if a picture is a nsfw picture
+        pass
 
     def create_guild_folder(self, guild: discord.Guild):
         if not os.path.exists(self.image_folderpath):

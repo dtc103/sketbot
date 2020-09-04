@@ -20,12 +20,13 @@ def open_database(host: str, user: str, password: str, database: str):
 def add_guild(database, guildname, guildid):
     """
     Add guild to guild table with options
-
     """
     cursor = database.cursor()
 
-    insert_stmt = ("""insert into guildoptions (guildid, guildname, crop_picture, safe_pictures, random_icon_change, delete_interval)
-    values (%s, %s, %s, %s, %s, %s);""")
+    insert_stmt_guild = ("""insert into guilds (guildid, guildname) values (%s, %s);""")
+
+    insert_stmt_settings = ("""insert into guildoptions (guildid, crop_picture, safe_pictures, random_icon_change, delete_interval)
+    values (%s, %s, %s, %s, %s);""")
 
     if isinstance(guildname, list) and isinstance(guildid, list):
         if len(guildname) != len(guildid):
@@ -34,23 +35,27 @@ def add_guild(database, guildname, guildid):
         try:
             for guildname, guildid in zip(guildid, guildname):
                 print(guildid, guildname)
-                cursor.execute(
-                    insert_stmt, (guildid, guildname, False, False, False, 0))
+                cursor.execute(insert_stmt_guild, (str(guildid), guildname))
+                cursor.execute(insert_stmt_settings, (str(guildid), False, False, False, 0))
             database.commit()
+        except mysql.connector.IntegrityError:
+            #Duplicated entry
+            pass
         except:
             raise DatabaseException("Insertion Error")
 
     elif isinstance(guildname, str) and isinstance(guildid, int):
         try:
-            params = (guildid, guildname, False, False, False, 0)
-            cursor.execute(insert_stmt, params)
+            cursor.execute(insert_stmt_guild, (str(guildid), guildname))
+            cursor.execute(insert_stmt_settings, (str(guildid), False, False, False, 0))
             database.commit()
+        except mysql.connector.IntegrityError:
+            #Duplicated entry
+            pass
         except:
             raise DatabaseException("Insertion Error")
     else:
         raise DatabaseException("Type Error")
-
-    return True
 
 
 def remove_guild(database, guildname: str, guildid: int):
@@ -98,12 +103,12 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
         raise DatabaseException("Guildid Error")
 
 
-def update_guild_options(database, guildname: str, guildid: int, *, crop_picture: bool = None, safe_picture: bool = None, random_icon_change: bool = None, delete_interval: int = 0):
+def update_guild_options(database, guildid: int, *, crop_picture: bool = None, safe_picture: bool = None, random_icon_change: bool = None, delete_interval: int = None):
     database_cursor = database.cursor()
 
     if crop_picture is not None:
         update_stmt = "update guildoptions set crop_picture=%s where guildid=%s and guildname=%s;"
-        params = (crop_picture, str(guildid), guildname)
+        params = (crop_picture, str(guildid))
         try:
             database_cursor.execute(update_stmt, params)
         except:
@@ -111,7 +116,7 @@ def update_guild_options(database, guildname: str, guildid: int, *, crop_picture
 
     if safe_picture is not None:
         update_stmt = "update guildoptions set safe_pictures=%s where guildid=%s and guildname=%s;"
-        params = (safe_picture, str(guildid), guildname)
+        params = (safe_picture, str(guildid))
         try:
             database_cursor.execute(update_stmt, params)
         except:
@@ -119,7 +124,7 @@ def update_guild_options(database, guildname: str, guildid: int, *, crop_picture
 
     if random_icon_change is not None:
         update_stmt = "update guildoptions set random_icon_change=%s where guildid=%s and guildname=%s;"
-        params = (random_icon_change, str(guildid), guildname)
+        params = (random_icon_change, str(guildid))
         try:
             database_cursor.execute(update_stmt, params)
         except:
@@ -135,7 +140,7 @@ def update_guild_options(database, guildname: str, guildid: int, *, crop_picture
             delete_interval = 168  # 1 week
 
         update_stmt = "update guildoptions set delete_interval=%s where guildid=%s and guildname=%s;"
-        params = (delete_interval, str(guildid), guildname)
+        params = (delete_interval, str(guildid))
         try:
             database_cursor.execute(update_stmt, params)
         except:
@@ -187,10 +192,9 @@ def get_roles(database, guildname: str, guildid: int):
     """
     database_cursor = database.cursor()
     role_get_stmt = "select roleid, rolename from roles where guildname=%s and guildid=%s"
-    params = (guildname, str(guildid))
 
     try:
-        database_cursor.execute(role_get_stmt, params)
+        database_cursor.execute(role_get_stmt, (guildname, str(guildid)))
     except:
         raise DatabaseException()
 
@@ -205,38 +209,31 @@ def get_roles(database, guildname: str, guildid: int):
     return roles
 
 
-def add_role(database, guildname: str, guildid: int, rolename: str, roleid: int):
+def add_role(database, guildid: int, rolename: str, roleid: int):
     """
     Adds a discord role to the database
     tablelayout is the following:
-    roles(
-        guildid,
-        guildname,
-        roleid,
-        rolename
-    )
     """
     database_cursor = database.cursor()
 
-    role_insert_stmt = "insert into roles (guildid, guildname, roleid, rolename) values (%s, %s, %s, %s);"
-    params = (guildname, str(guildid), rolename, str(roleid))
+    role_insert_stmt = "insert into roles (guildid, roleid, rolename) values (%s, %s, %s);"
 
     try:
-        database_cursor.execute(role_insert_stmt, params)
+        database_cursor.execute(role_insert_stmt, (str(guildid), rolename, str(roleid)))
         database.commit()
     except:
         raise DatabaseException()
     return True
 
 
-def get_channels(database, guildname: str, guildid: int):
+def get_channels(database, guildid: int):
     """
     Returns all channels the bot should listening to for a specific guild.
     """
     database_cursor = database.cursor()
 
-    get_channels_stmt = "select channelid, channelname from channels where guildname=%s and guildid=%s;"
-    params = (guildname, str(guildid))
+    get_channels_stmt = "select channelid, channelname from channels where guildid=%s;"
+    params = (str(guildid))
 
     try:
         database_cursor.execute(get_channels_stmt, params)
@@ -254,25 +251,16 @@ def get_channels(database, guildname: str, guildid: int):
     return channels
 
 
-def add_channel(database, guildname: str, guildid: int, channelname: str, channelid: int):
+def add_channel(database, guildid: int, channelname: str, channelid: int):
     """
     Adds a discord channel to the database
-
-    tablelayout is the following:
-    channels(
-        guildid,
-        guildname,
-        channelid,
-        channelname
-    )
     """
     database_cursor = database.cursor()
 
-    channel_insert_stmt = "insert into channels (guildid, guildname, channelid, channelname) values (%s, %s, %s, %s);"
-    params = (str(guildid), guildname,  str(channelid), channelname)
+    channel_insert_stmt = "insert into channels (guildid, channelid, channelname) values (%s, %s, %s);"
 
     try:
-        database_cursor.execute(channel_insert_stmt, params)
+        database_cursor.execute(channel_insert_stmt, (str(guildid), str(channelid), channelname))
         database.commit()
     except:
         raise DatabaseException()
@@ -280,32 +268,18 @@ def add_channel(database, guildname: str, guildid: int, channelname: str, channe
     return True
 
 
-def add_picture(database, pichash: str, guildname: str, guildid: int, authorname: str, authorid: int, width: int, height: int, imagepath: str):
+def add_picture(database, pichash: str, guildid: int, authorname: str, authorid: int, width: int, height: int, imagepath: str):
     """
     Adds the path of the picture saved on the harddrive to the databse and some metadata about it
-
-    tablelayout is the following:
-    pictable(
-        pichash,
-        guildname,
-        guildid,
-        authorname,
-        authorid,
-        date,
-        width,
-        height,
-        picpath
-    )
     """
     database_cursor = database.cursor()
 
     print(hash)
-    print(guildname)
 
     insert_statement = (
-        'insert into pictable (pichash, guildname, guildid, authorname, authorid, date, width, height, picpath) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);')
+        'insert into pictable (pichash, guildid, authorname, authorid, date, width, height, picpath) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);')
 
-    params = (pichash, str(guildname), str(guildid), str(authorname), str(authorid), str(datetime.today(
+    params = (pichash, str(guildid), str(authorname), str(authorid), str(datetime.today(
     ).strftime('%Y-%m-%d')), int(width), int(height), imagepath)
     try:
         database_cursor.execute(insert_statement, params)
