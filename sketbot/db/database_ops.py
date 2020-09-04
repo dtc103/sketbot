@@ -58,27 +58,6 @@ def add_guild(database, guildname, guildid):
         raise DatabaseException("Type Error")
 
 
-def remove_guild(database, guildname: str, guildid: int):
-    """
-    remove everything from that guild in every table
-    """
-    database_cursor = database.cursor()
-
-    database_cursor.execute("show tables;")
-    for table in database_cursor.fetchall():
-        remove_guild_stmt = f"delete from {table[0]} where guildname=%s and guildid=%s;"
-        params = (guildname, str(guildid))
-
-        try:
-            database_cursor.execute(remove_guild_stmt, params)
-        except:
-            raise DatabaseException()
-    try:
-        database.commit()
-    except:
-        raise DatabaseException()
-
-
 def update_guild(database, guildname_before: str, guildid_before: int, guildname_after: str, guildid_after: int):
     """
     Updates a guild if there were some changes on the discord guild
@@ -101,6 +80,27 @@ def update_guild(database, guildname_before: str, guildid_before: int, guildname
             raise DatabaseException()
     else:
         raise DatabaseException("Guildid Error")
+
+
+def remove_guild(database, guildname: str, guildid: int):
+    """
+    remove everything from that guild in every table
+    """
+    database_cursor = database.cursor()
+
+    database_cursor.execute("show tables;")
+    for table in database_cursor.fetchall():
+        remove_guild_stmt = f"delete from {table[0]} where guildname=%s and guildid=%s;"
+        params = (guildname, str(guildid))
+
+        try:
+            database_cursor.execute(remove_guild_stmt, params)
+        except:
+            raise DatabaseException()
+    try:
+        database.commit()
+    except:
+        raise DatabaseException()
 
 
 def update_guild_options(database, guildid: int, *, crop_picture: bool = None, safe_picture: bool = None, random_icon_change: bool = None, delete_interval: int = None):
@@ -186,6 +186,22 @@ def get_all_guilds(database):
     pass
 
 
+def add_role(database, guildid: int, rolename: str, roleid: int):
+    """
+    Adds a discord role to the database
+    tablelayout is the following:
+    """
+    database_cursor = database.cursor()
+
+    role_insert_stmt = "insert into roles (guildid, roleid, rolename) values (%s, %s, %s);"
+
+    try:
+        database_cursor.execute(role_insert_stmt, (str(guildid), rolename, str(roleid)))
+        database.commit()
+    except:
+        raise DatabaseException()
+
+
 def get_roles(database, guildname: str, guildid: int):
     """
     Returns all discord roles for a specific guild
@@ -207,23 +223,21 @@ def get_roles(database, guildname: str, guildid: int):
         roles.append((roleid, rolename))
 
     return roles
+    
 
-
-def add_role(database, guildid: int, rolename: str, roleid: int):
+def add_channel(database, guildid: int, channelname: str, channelid: int):
     """
-    Adds a discord role to the database
-    tablelayout is the following:
+    Adds a discord channel to the database
     """
     database_cursor = database.cursor()
 
-    role_insert_stmt = "insert into roles (guildid, roleid, rolename) values (%s, %s, %s);"
+    channel_insert_stmt = "insert into channels (guildid, channelid, channelname) values (%s, %s, %s);"
 
     try:
-        database_cursor.execute(role_insert_stmt, (str(guildid), rolename, str(roleid)))
+        database_cursor.execute(channel_insert_stmt, (str(guildid), str(channelid), channelname))
         database.commit()
     except:
         raise DatabaseException()
-    return True
 
 
 def get_channels(database, guildid: int):
@@ -249,23 +263,6 @@ def get_channels(database, guildid: int):
         channels.append((channelid, channelname))
 
     return channels
-
-
-def add_channel(database, guildid: int, channelname: str, channelid: int):
-    """
-    Adds a discord channel to the database
-    """
-    database_cursor = database.cursor()
-
-    channel_insert_stmt = "insert into channels (guildid, channelid, channelname) values (%s, %s, %s);"
-
-    try:
-        database_cursor.execute(channel_insert_stmt, (str(guildid), str(channelid), channelname))
-        database.commit()
-    except:
-        raise DatabaseException()
-
-    return True
 
 
 def add_picture(database, pichash: str, guildid: int, authorname: str, authorid: int, width: int, height: int, imagepath: str):
